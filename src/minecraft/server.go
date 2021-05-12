@@ -7,7 +7,10 @@ import (
 )
 
 type Server struct {
-	listener net.Listener
+	listener       net.Listener
+	Motd           string
+	KickMessage    string
+	TooltipMessage string
 }
 
 type Client struct {
@@ -15,9 +18,6 @@ type Client struct {
 	currentState    int
 	protocolVersion int
 }
-
-const motd = "§eCraftIgnite Minecraft Proxy\n§9Server is currently sleeping"
-const kickMessage = "§c[CraftIgnite]§r The server is currently starting.\nPlease try to reconnect in a minute."
 
 const stateJson = `
 {
@@ -30,7 +30,7 @@ const stateJson = `
         "online": 0,
         "sample": [
             {
-                "name": "Server will start on join",
+                "name": "%s",
                 "id": "00000000-0000-0000-0000-000000000000"
             }
         ]
@@ -56,7 +56,7 @@ func (server *Server) Start() {
 			return
 		}
 
-		go handleClient(conn)
+		go server.handleClient(conn)
 	}
 }
 
@@ -68,7 +68,7 @@ func (server *Server) Stop() {
 	}
 }
 
-func handleClient(conn net.Conn) {
+func (server *Server) handleClient(conn net.Conn) {
 	receiveBuf := make([]byte, 1024)
 	client := Client{conn, 0, 0}
 
@@ -80,13 +80,12 @@ func handleClient(conn net.Conn) {
 
 		packet := Buffer{receiveBuf[0:read], 0}
 		if packet.data[0] == 0xfe {
-			handleLegacyPing(client, &packet)
+			server.handleLegacyPing(client, &packet)
 			continue
 		}
 
-		len := packet.ReadVarInt()
+		packet.ReadVarInt()
 		pid := packet.ReadVarInt()
-		fmt.Printf("Received packet #%d (%d bytes)\n", pid, len)
 
 		switch {
 		case client.currentState == 0 && pid == 0:
@@ -94,17 +93,17 @@ func handleClient(conn net.Conn) {
 			packet.Skip(packet.ReadVarInt() + 2)
 			client.currentState = packet.ReadVarInt()
 		case client.currentState == 1:
-			handleStatusPacket(client, pid, &packet)
+			server.handleStatusPacket(client, pid, &packet)
 		case client.currentState == 2:
-			handleLoginPacket(client, pid, &packet)
+			server.handleLoginPacket(client, pid, &packet)
 		}
 	}
 }
 
-func handleLegacyPing(client Client, packet *Buffer) {
+func (server *Server) handleLegacyPing(client Client, packet *Buffer) {
 	response := Buffer{make([]byte, 1024), 0}
 	encoder := unicode.UTF16(unicode.BigEndian, 0).NewEncoder()
-	infoString := fmt.Sprintf("§1\x0047\x001.0.0\x00%s\x000\x00100", motd)
+	infoString := fmt.Sprintf("§1\x0047\x001.0.0\x00%s\x000\x00100", server.Motd)
 	utf16be, _ := encoder.String(infoString)
 	response.WriteByte(0xFF)
 	response.WriteShortBE(uint16(len(infoString) - 1))
@@ -112,12 +111,12 @@ func handleLegacyPing(client Client, packet *Buffer) {
 	sendPacket(client.conn, &response)
 }
 
-func handleStatusPacket(client Client, pid int, packet *Buffer) {
+func (server *Server) handleStatusPacket(client Client, pid int, packet *Buffer) {
 	switch pid {
 	case 0: // Status Request
 		response := Buffer{make([]byte, 1024), 0}
 		response.WriteVarInt(0) // Status Response
-		response.WriteString(fmt.Sprintf(stateJson, client.protocolVersion, motd))
+		response.WriteString(fmt.Sprintf(stateJson, client.protocolVersion, server.TooltipMessage, server.Motd))
 		sendPacket(client.conn, &response)
 	case 1: // Ping
 		response := Buffer{make([]byte, 16), 0}
@@ -127,18 +126,18 @@ func handleStatusPacket(client Client, pid int, packet *Buffer) {
 	}
 }
 
-func handleLoginPacket(client Client, pid int, packet *Buffer) {
+func (server *Server) handleLoginPacket(client Client, pid int, packet *Buffer) {
 	switch pid {
 	case 0: // Login Request
 		response := Buffer{make([]byte, 128), 0}
 		response.WriteVarInt(0) // Login Disconnect
-		response.WriteString(fmt.Sprintf(`{ "text": "%s" }`, kickMessage))
+		response.WriteString(fmt.Sprintf(`{ "text": "%s" }`, server.KickMessage))
 		sendPacket(client.conn, &response)
 	}
 }
 
 func sendPacket(conn net.Conn, packet *Buffer) {
-	container := Buffer{make([]byte, len(packet.data)+16), 0}
+	container := Buffer{make([]byte, len(packet.data)+8), 0}
 	container.WriteVarInt(int(packet.offset))
 	container.WriteBytes(packet.data[0:packet.offset])
 	_, err := conn.Write(container.data[0:container.offset])
