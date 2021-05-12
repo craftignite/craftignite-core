@@ -1,7 +1,12 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"twometer.dev/craftignite/minecraft"
+)
 
 func main() {
-	fmt.Printf("Craftignite starting up")
+	fmt.Println("CraftIgnite starting up")
+	server := minecraft.Server{}
+	server.Start()
 }
