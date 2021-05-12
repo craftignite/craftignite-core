@@ -50,6 +50,11 @@ func (buf *Buffer) WriteLong(val uint64) {
 	buf.offset += 8
 }
 
+func (buf *Buffer) WriteShortBE(val uint16) {
+	binary.BigEndian.PutUint16(buf.data[buf.offset:buf.offset+2], val)
+	buf.offset += 2
+}
+
 func (buf *Buffer) WriteByte(val byte) {
 	buf.data[buf.offset] = val
 	buf.offset++

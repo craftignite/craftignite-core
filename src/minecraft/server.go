@@ -2,6 +2,7 @@ package minecraft
 
 import (
 	"fmt"
+	"golang.org/x/text/encoding/unicode"
 	"net"
 )
 
@@ -15,25 +16,27 @@ type Client struct {
 	protocolVersion int
 }
 
+const motd = "§eCraftIgnite Minecraft Proxy\n§9Server is currently sleeping"
 const kickMessage = "§c[CraftIgnite]§r The server is currently starting.\nPlease try to reconnect in a minute."
+
 const stateJson = `
 {
     "version": {
-        "name": "9.8.7",
+        "name": "1.2.3",
         "protocol": %d
     },
     "players": {
-        "max": 100,
-        "online": 101,
+        "max": 0,
+        "online": 0,
         "sample": [
             {
-                "name": "test",
+                "name": "Server will start on join",
                 "id": "00000000-0000-0000-0000-000000000000"
             }
         ]
     },
     "description": {
-        "text": "§eCraftIgnite Minecraft Proxy\n§8Server currently sleeping"
+        "text": "%s"
     }
 }`
 
@@ -99,7 +102,14 @@ func handleClient(conn net.Conn) {
 }
 
 func handleLegacyPing(client Client, packet *Buffer) {
-	fmt.Println("Legacy ping received")
+	response := Buffer{make([]byte, 1024), 0}
+	encoder := unicode.UTF16(unicode.BigEndian, 0).NewEncoder()
+	infoString := fmt.Sprintf("§1\x0047\x001.0.0\x00%s\x000\x00100", motd)
+	utf16be, _ := encoder.String(infoString)
+	response.WriteByte(0xFF)
+	response.WriteShortBE(uint16(len(infoString) - 1))
+	response.WriteBytes([]byte(utf16be))
+	sendPacket(client.conn, &response)
 }
 
 func handleStatusPacket(client Client, pid int, packet *Buffer) {
@@ -107,7 +117,7 @@ func handleStatusPacket(client Client, pid int, packet *Buffer) {
 	case 0: // Status Request
 		response := Buffer{make([]byte, 1024), 0}
 		response.WriteVarInt(0) // Status Response
-		response.WriteString(fmt.Sprintf(stateJson, client.protocolVersion))
+		response.WriteString(fmt.Sprintf(stateJson, client.protocolVersion, motd))
 		sendPacket(client.conn, &response)
 	case 1: // Ping
 		response := Buffer{make([]byte, 16), 0}
