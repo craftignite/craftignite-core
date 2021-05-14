@@ -7,12 +7,13 @@ import (
 )
 
 type Server struct {
-	listener       net.Listener
-	Motd           string
-	KickMessage    string
-	TooltipMessage string
-	VersionName    string
-	MaxPlayerCount int
+	listener        net.Listener
+	Motd            string
+	KickMessage     string
+	TooltipMessage  string
+	VersionName     string
+	MaxPlayerCount  int
+	ConnectCallback func()
 }
 
 type Client struct {
@@ -136,6 +137,7 @@ func (server *Server) handleLoginPacket(client Client, pid int, packet *Buffer) 
 		response.WriteVarInt(0) // Login Disconnect
 		response.WriteString(fmt.Sprintf(`{ "text": "%s" }`, server.KickMessage))
 		sendPacket(client.conn, &response)
+		server.ConnectCallback()
 	}
 }
 
