@@ -11,6 +11,8 @@ type Server struct {
 	Motd           string
 	KickMessage    string
 	TooltipMessage string
+	VersionName    string
+	MaxPlayerCount int
 }
 
 type Client struct {
@@ -22,11 +24,11 @@ type Client struct {
 const stateJson = `
 {
     "version": {
-        "name": "1.2.3",
+        "name": "%s",
         "protocol": %d
     },
     "players": {
-        "max": 0,
+        "max": %d,
         "online": 0,
         "sample": [
             {
@@ -103,8 +105,9 @@ func (server *Server) handleClient(conn net.Conn) {
 func (server *Server) handleLegacyPing(client Client, packet *Buffer) {
 	response := Buffer{make([]byte, 1024), 0}
 	encoder := unicode.UTF16(unicode.BigEndian, 0).NewEncoder()
-	infoString := fmt.Sprintf("§1\x0047\x001.0.0\x00%s\x000\x00100", server.Motd)
+	infoString := fmt.Sprintf("§1\x00127\x00%s\x00%s\x000\x00%d", server.VersionName, server.Motd, server.MaxPlayerCount)
 	utf16be, _ := encoder.String(infoString)
+
 	response.WriteByte(0xFF)
 	response.WriteShortBE(uint16(len(infoString) - 1))
 	response.WriteBytes([]byte(utf16be))
@@ -116,7 +119,7 @@ func (server *Server) handleStatusPacket(client Client, pid int, packet *Buffer)
 	case 0: // Status Request
 		response := Buffer{make([]byte, 1024), 0}
 		response.WriteVarInt(0) // Status Response
-		response.WriteString(fmt.Sprintf(stateJson, client.protocolVersion, server.TooltipMessage, server.Motd))
+		response.WriteString(fmt.Sprintf(stateJson, server.VersionName, client.protocolVersion, server.MaxPlayerCount, server.TooltipMessage, server.Motd))
 		sendPacket(client.conn, &response)
 	case 1: // Ping
 		response := Buffer{make([]byte, 16), 0}
