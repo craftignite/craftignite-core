@@ -45,15 +45,20 @@ const stateJson = `
 
 func (server *Server) Start() {
 	var err error
-	server.listener, err = net.Listen("tcp", "localhost:25565")
+	server.listener, err = net.Listen("tcp", ":25565")
 
 	if err != nil {
 		fmt.Println("Server failed to start: ", err.Error())
 		return
 	}
 
+	fmt.Println("Minecraft listener started.")
+
 	for {
 		conn, err := server.listener.Accept()
+
+		fmt.Println("Connection accepted")
+
 		if err != nil {
 			fmt.Println("Server failed to accept client: " + err.Error())
 			return

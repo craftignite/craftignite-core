@@ -10,7 +10,8 @@ func main() {
 	fmt.Println("CraftIgnite starting up")
 
 	process := proxy.ServerProcess{
-		FileName: "/app/minecraft.jar",
+		Command:   "java -jar server.jar",
+		Directory: ".testserver/",
 	}
 
 	server := minecraft.Server{
@@ -20,8 +21,7 @@ func main() {
 		MaxPlayerCount: 0,
 		VersionName:    "1.0.0",
 		ConnectCallback: func() {
-			fmt.Println("A player tried to connect, starting Minecraft server...")
-			process.Start()
+			go process.Start()
 		},
 	}
 
