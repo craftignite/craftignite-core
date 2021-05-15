@@ -4,6 +4,7 @@
 *.dll
 *.so
 *.dylib
+./craftignite
 
 # Test binary, built with `go test -c`
 *.test
@@ -16,3 +17,6 @@
 
 # GoLand stuff
 .idea
+
+# Test Minecraft Server
+.testserver/
