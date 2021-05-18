@@ -1,13 +1,13 @@
 package main
 
 import (
-	"fmt"
+	"log"
 	"twometer.dev/craftignite/minecraft"
 	"twometer.dev/craftignite/proxy"
 )
 
 func main() {
-	fmt.Println("CraftIgnite starting up")
+	log.Println("CraftIgnite starting up")
 
 	process := proxy.ServerProcess{
 		Command:   "java -jar server.jar",

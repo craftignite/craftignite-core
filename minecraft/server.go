@@ -3,6 +3,7 @@ package minecraft
 import (
 	"fmt"
 	"golang.org/x/text/encoding/unicode"
+	"log"
 	"net"
 )
 
@@ -48,20 +49,16 @@ func (server *Server) Start() {
 	server.listener, err = net.Listen("tcp", ":25565")
 
 	if err != nil {
-		fmt.Println("Server failed to start: ", err.Error())
-		return
+		log.Fatalln("Server failed to start: ", err.Error())
 	}
 
-	fmt.Println("Minecraft listener started.")
+	log.Println("Minecraft listener started.")
 
 	for {
 		conn, err := server.listener.Accept()
 
-		fmt.Println("Connection accepted")
-
 		if err != nil {
-			fmt.Println("Server failed to accept client: " + err.Error())
-			return
+			log.Fatalln("Server failed to accept client: " + err.Error())
 		}
 
 		go server.handleClient(conn)
@@ -71,28 +68,56 @@ func (server *Server) Start() {
 func (server *Server) Stop() {
 	err := server.listener.Close()
 	if err != nil {
-		fmt.Println("Server failed to stop: " + err.Error())
-		return
+		log.Fatalln("Server failed to stop: " + err.Error())
 	}
 }
 
-func (server *Server) handleClient(conn net.Conn) {
-	receiveBuf := make([]byte, 1024)
-	client := Client{conn, 0, 0}
+func ReadPacketPrefix(conn net.Conn) (length int, isLegacy bool) {
+	numRead, result := 0, 0
+	buf := make([]byte, 1)
 
 	for {
+		conn.Read(buf)
+		read := buf[0]
+		if read == 0xFE {
+			return 0, true
+		}
+
+		val := int(read & 0b01111111)
+		result |= val << (7 * numRead)
+		numRead++
+
+		if read&0b10000000 == 0 {
+			break
+		}
+	}
+
+	return result, false
+}
+
+func (server *Server) handleClient(conn net.Conn) {
+	client := Client{conn, 0, 0}
+
+	log.Println("Handling a connection")
+
+	for {
+		length, isLegacy := ReadPacketPrefix(conn)
+
+		receiveBuf := make([]byte, length)
 		read, err := conn.Read(receiveBuf)
 		if err != nil {
 			return
 		}
 
 		packet := Buffer{receiveBuf[0:read], 0}
-		if packet.data[0] == 0xfe {
+		if isLegacy {
 			server.handleLegacyPing(client, &packet)
 			continue
 		}
+		if length == 0 {
+			continue
+		}
 
-		packet.ReadVarInt()
 		pid := packet.ReadVarInt()
 
 		switch {
@@ -152,6 +177,6 @@ func sendPacket(conn net.Conn, packet *Buffer) {
 	container.WriteBytes(packet.data[0:packet.offset])
 	_, err := conn.Write(container.data[0:container.offset])
 	if err != nil {
-		fmt.Println("Failed to send packet to client")
+		log.Println("Failed to send packet to client")
 	}
 }

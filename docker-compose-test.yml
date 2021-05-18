@@ -1,0 +1,10 @@
+version: '3.8'
+
+services:
+  minecraft:
+    image: craftignite-test
+    ports:
+      - "25565:25565"
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
