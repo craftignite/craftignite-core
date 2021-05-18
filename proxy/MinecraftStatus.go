@@ -2,9 +2,7 @@ package proxy
 
 import (
 	"errors"
-	"fmt"
 	"golang.org/x/text/encoding/unicode"
-	"log"
 	"net"
 	"strconv"
 	"strings"
@@ -15,8 +13,8 @@ type MinecraftStatus struct {
 	MaxPlayers int
 }
 
-func GetServerStatus(serverIp string) (MinecraftStatus, error) {
-	client, err := net.Dial("tcp", fmt.Sprintf("%s:25566", serverIp))
+func GetServerStatus() (MinecraftStatus, error) {
+	client, err := net.Dial("tcp", "127.0.0.1:25566")
 	if err != nil {
 		return MinecraftStatus{}, err
 	}
@@ -36,8 +34,6 @@ func GetServerStatus(serverIp string) (MinecraftStatus, error) {
 	decoder := unicode.UTF16(unicode.BigEndian, 0).NewDecoder()
 	decodedData, _ := decoder.Bytes(recvbuf[0:read][3:])
 	response := strings.Split(string(decodedData), "\x00")
-
-	log.Println("Received response from the server")
 
 	curPlayers, _ := strconv.ParseInt(response[4], 10, 32)
 	maxPlayers, _ := strconv.ParseInt(response[5], 10, 32)

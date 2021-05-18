@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -10,6 +11,7 @@ import (
 
 type ServerProcess struct {
 	running   bool
+	stdin     io.WriteCloser
 	Command   string
 	Directory string
 }
@@ -29,33 +31,53 @@ func (process *ServerProcess) Start() {
 	cmd.Dir = process.Directory
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	cmd.Stdin = os.Stdin
-	err := cmd.Start()
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	// Start process
+	process.stdin = stdin
+	err = cmd.Start()
 	if err != nil {
 		log.Fatalln(err)
 	}
 
 	// Wait for the server to reply
 	for {
-		_, err := GetServerStatus("127.0.0.1")
+		_, err := GetServerStatus()
 		if err == nil {
 			break
 		}
 		time.Sleep(time.Second)
 	}
 
+	// Install firewall redirect
 	InstallRedirect()
+
+	// STDIN Passthrough
+	go func() {
+		_, err := io.Copy(process.stdin, os.Stdin)
+		if err != nil {
+			log.Fatalln(err)
+		}
+	}()
+
+	// Wait for server to shut down
 	err = cmd.Wait()
 	if err != nil {
 		log.Fatalln(err)
 	}
 
-	
-
+	// Uninstall the redirect
 	log.Println("Minecraft server shut down")
 	UninstallRedirect()
 }
 
 func (process *ServerProcess) Stop() {
 	log.Println("Stopping Minecraft server...")
+	_, err := process.stdin.Write(([]byte)("stop\r\n"))
+	if err != nil {
+		log.Fatalln(err)
+	}
 }
