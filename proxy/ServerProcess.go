@@ -10,10 +10,11 @@ import (
 )
 
 type ServerProcess struct {
-	running   bool
-	stdin     io.WriteCloser
-	Command   string
-	Directory string
+	running          bool
+	stdin            io.WriteCloser
+	Command          string
+	Directory        string
+	ShutdownCallback func()
 }
 
 func (process *ServerProcess) Start() {
@@ -72,6 +73,8 @@ func (process *ServerProcess) Start() {
 	// Uninstall the redirect
 	log.Println("Minecraft server shut down")
 	UninstallRedirect()
+
+	process.ShutdownCallback()
 }
 
 func (process *ServerProcess) Stop() {

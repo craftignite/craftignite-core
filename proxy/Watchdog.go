@@ -8,11 +8,13 @@ import (
 type Watchdog struct {
 	Timeout          int64
 	ShutdownCallback func()
+	HasShutdown      bool
 	lastUpdate       int64
 }
 
 func (watchdog *Watchdog) Reset() {
 	watchdog.lastUpdate = time.Now().Unix()
+	watchdog.HasShutdown = false
 }
 
 func (watchdog *Watchdog) Start() {
@@ -28,6 +30,7 @@ func (watchdog *Watchdog) Start() {
 			} else if time.Now().Unix()-watchdog.lastUpdate > watchdog.Timeout {
 				log.Println("No one is online, shutting down...")
 				watchdog.ShutdownCallback()
+				watchdog.HasShutdown = true
 				watchdog.lastUpdate = time.Now().Unix()
 			}
 

@@ -1,7 +1,10 @@
 package main
 
 import (
+	"flag"
 	"log"
+	"os"
+	"strings"
 	"twometer.dev/craftignite/minecraft"
 	"twometer.dev/craftignite/proxy"
 )
@@ -9,10 +12,7 @@ import (
 func main() {
 	log.Println("CraftIgnite starting up")
 
-	process := proxy.ServerProcess{
-		Command:   "java -jar server.jar",
-		Directory: ".testserver/",
-	}
+	var process proxy.ServerProcess
 
 	watchdog := proxy.Watchdog{
 		Timeout: 30,
@@ -21,6 +21,17 @@ func main() {
 		},
 	}
 	go watchdog.Start()
+
+	process = proxy.ServerProcess{
+		Command:   strings.Join(flag.Args(), " "),
+		Directory: ".",
+		ShutdownCallback: func() {
+			if !watchdog.HasShutdown {
+				log.Println("Server stopped without watchdog, interpreting as full stop")
+				os.Exit(0)
+			}
+		},
+	}
 
 	server := minecraft.Server{
 		Motd:           "§6CraftIgnite Minecraft Proxy\n§7Server is currently sleeping",
