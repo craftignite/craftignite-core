@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"log"
 	"os"
 	"strings"
@@ -23,7 +22,7 @@ func main() {
 	go watchdog.Start()
 
 	process = proxy.ServerProcess{
-		Command:   strings.Join(flag.Args(), " "),
+		Command:   strings.Join(os.Args[1:], " "),
 		Directory: ".",
 		ShutdownCallback: func() {
 			if !watchdog.HasShutdown {

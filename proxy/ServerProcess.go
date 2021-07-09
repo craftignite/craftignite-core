@@ -25,6 +25,7 @@ func (process *ServerProcess) Start() {
 	process.running = true
 
 	log.Println("Starting Minecraft server...")
+	log.Println("Server command line: " + process.Command)
 
 	// Start the server
 	commandParts := strings.Split(process.Command, " ")
