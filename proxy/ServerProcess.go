@@ -55,6 +55,7 @@ func (process *ServerProcess) Start() {
 	}
 
 	// Install firewall redirect
+
 	InstallRedirect()
 
 	// STDIN Passthrough

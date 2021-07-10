@@ -3,6 +3,7 @@ package minecraft
 import (
 	"fmt"
 	"golang.org/x/text/encoding/unicode"
+	"io"
 	"log"
 	"net"
 )
@@ -15,6 +16,7 @@ type Server struct {
 	VersionName     string
 	MaxPlayerCount  int
 	ConnectCallback func()
+	Passthrough     bool
 }
 
 type Client struct {
@@ -61,7 +63,11 @@ func (server *Server) Start() {
 			log.Fatalln("Server failed to accept client: " + err.Error())
 		}
 
-		go server.handleClient(conn)
+		if server.Passthrough {
+			server.handlePassthrough(conn)
+		} else {
+			go server.handleClient(conn)
+		}
 	}
 }
 
@@ -93,6 +99,17 @@ func ReadPacketPrefix(conn net.Conn) (length int, isLegacy bool) {
 	}
 
 	return result, false
+}
+
+func (server *Server) handlePassthrough(conn net.Conn) {
+	serverConn, _ := net.Dial("tcp", "localhost:25566")
+	go func() {
+		_, _ = io.Copy(conn, serverConn)
+	}()
+
+	go func() {
+		_, _ = io.Copy(serverConn, conn)
+	}()
 }
 
 func (server *Server) handleClient(conn net.Conn) {
