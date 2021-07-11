@@ -4,6 +4,7 @@ import (
 	"errors"
 	"golang.org/x/text/encoding/unicode"
 	"net"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -14,7 +15,7 @@ type MinecraftStatus struct {
 }
 
 func GetServerStatus() (MinecraftStatus, error) {
-	client, err := net.Dial("tcp", "127.0.0.1:25566")
+	client, err := net.Dial("tcp", "127.0.0.1:" + os.Getenv("INTERNAL_SERVER_PORT"))
 	if err != nil {
 		return MinecraftStatus{}, err
 	}

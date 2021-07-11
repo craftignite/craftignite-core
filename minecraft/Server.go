@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"os"
 )
 
 type Server struct {
@@ -16,6 +17,7 @@ type Server struct {
 	VersionName     string
 	MaxPlayerCount  int
 	ConnectCallback func()
+	HostAddress     string
 	Passthrough     bool
 }
 
@@ -48,7 +50,7 @@ const stateJson = `
 
 func (server *Server) Start() {
 	var err error
-	server.listener, err = net.Listen("tcp", ":25565")
+	server.listener, err = net.Listen("tcp", server.HostAddress)
 
 	if err != nil {
 		log.Fatalln("Server failed to start: ", err.Error())
@@ -102,7 +104,7 @@ func ReadPacketPrefix(conn net.Conn) (length int, isLegacy bool) {
 }
 
 func (server *Server) handlePassthrough(conn net.Conn) {
-	serverConn, _ := net.Dial("tcp", "127.0.0.1:25566")
+	serverConn, _ := net.Dial("tcp", "127.0.0.1:" + os.Getenv("INTERNAL_SERVER_PORT"))
 	go func() {
 		_, _ = io.Copy(conn, serverConn)
 	}()

@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"strconv"
 	"strings"
 	"twometer.dev/craftignite/minecraft"
 	"twometer.dev/craftignite/proxy"
@@ -11,10 +12,17 @@ import (
 func main() {
 	log.Println("CraftIgnite starting up")
 
+	timeoutStr := os.Getenv("CRAFTIGNITE_TIMEOUT")
+	timeout, err := strconv.Atoi(timeoutStr)
+
+	if err != nil {
+		log.Fatalln(err)
+	}
+
 	var process proxy.ServerProcess
 
 	watchdog := proxy.Watchdog{
-		Timeout: 30,
+		Timeout: int64(timeout),
 		ShutdownCallback: func() {
 			process.Stop()
 		},
@@ -22,9 +30,10 @@ func main() {
 	go watchdog.Start()
 
 	server := minecraft.Server{
-		Motd:           "§6CraftIgnite Minecraft Proxy\n§7Server is currently sleeping",
-		KickMessage:    "§l§6CraftIgnite\n\n§rThe server is currently starting.\nPlease try to reconnect in a minute.",
-		TooltipMessage: "§aServer will automatically start once you join",
+		Motd:           os.Getenv("CRAFTIGNITE_MOTD"),
+		KickMessage:    os.Getenv("CRAFTIGNITE_KICK_MESSAGE"),
+		TooltipMessage: os.Getenv("CRAFTIGNITE_TOOLTIP_MESSAGE"),
+		HostAddress:    ":" + os.Getenv("SERVER_PORT"),
 		MaxPlayerCount: 0,
 		VersionName:    "1.0.0",
 		ConnectCallback: func() {
