@@ -102,7 +102,7 @@ func ReadPacketPrefix(conn net.Conn) (length int, isLegacy bool) {
 }
 
 func (server *Server) handlePassthrough(conn net.Conn) {
-	serverConn, _ := net.Dial("tcp", "localhost:25566")
+	serverConn, _ := net.Dial("tcp", "127.0.0.1:25566")
 	go func() {
 		_, _ = io.Copy(conn, serverConn)
 	}()

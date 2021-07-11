@@ -21,17 +21,6 @@ func main() {
 	}
 	go watchdog.Start()
 
-	process = proxy.ServerProcess{
-		Command:   strings.Join(os.Args[1:], " "),
-		Directory: ".",
-		ShutdownCallback: func() {
-			if !watchdog.HasShutdown {
-				log.Println("Server stopped without watchdog, interpreting as full stop")
-				os.Exit(0)
-			}
-		},
-	}
-
 	server := minecraft.Server{
 		Motd:           "§6CraftIgnite Minecraft Proxy\n§7Server is currently sleeping",
 		KickMessage:    "§l§6CraftIgnite\n\n§rThe server is currently starting.\nPlease try to reconnect in a minute.",
@@ -43,5 +32,21 @@ func main() {
 			go process.Start()
 		},
 	}
+
+	process = proxy.ServerProcess{
+		Command:   strings.Join(os.Args[1:], " "),
+		Directory: ".",
+		StartupCallback: func() {
+			server.Passthrough = true
+		},
+		ShutdownCallback: func() {
+			server.Passthrough = false
+			if !watchdog.HasShutdown {
+				log.Println("Server stopped without watchdog, interpreting as full stop")
+				os.Exit(0)
+			}
+		},
+	}
+
 	server.Start()
 }

@@ -15,6 +15,7 @@ type ServerProcess struct {
 	Command          string
 	Directory        string
 	ShutdownCallback func()
+	StartupCallback  func()
 }
 
 func (process *ServerProcess) Start() {
@@ -54,9 +55,7 @@ func (process *ServerProcess) Start() {
 		time.Sleep(time.Second)
 	}
 
-	// Install firewall redirect
-
-	InstallRedirect()
+	process.StartupCallback()
 
 	// STDIN Passthrough
 	go func() {
@@ -72,10 +71,7 @@ func (process *ServerProcess) Start() {
 		log.Fatalln(err)
 	}
 
-	// Uninstall the redirect
 	log.Println("Minecraft server shut down")
-	UninstallRedirect()
-
 	process.ShutdownCallback()
 }
 
