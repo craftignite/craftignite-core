@@ -72,6 +72,7 @@ func (process *ServerProcess) Start() {
 	}
 
 	log.Println("Minecraft server shut down")
+	process.running = false
 	process.ShutdownCallback()
 }
 
