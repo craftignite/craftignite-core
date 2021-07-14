@@ -18,7 +18,7 @@ type Server struct {
 	MaxPlayerCount  int
 	ConnectCallback func()
 	HostAddress     string
-	Passthrough     bool
+	ProxyMode       bool
 }
 
 type Client struct {
@@ -65,8 +65,8 @@ func (server *Server) Start() {
 			log.Fatalln("Server failed to accept client: " + err.Error())
 		}
 
-		if server.Passthrough {
-			server.handlePassthrough(conn)
+		if server.ProxyMode {
+			server.handleProxy(conn)
 		} else {
 			go server.handleClient(conn)
 		}
@@ -80,15 +80,18 @@ func (server *Server) Stop() {
 	}
 }
 
-func ReadPacketPrefix(conn net.Conn) (length int, isLegacy bool) {
+func readPacketHeader(conn net.Conn) (length int, isLegacy bool, err error) {
 	numRead, result := 0, 0
 	buf := make([]byte, 1)
 
 	for {
-		conn.Read(buf)
+		_, err = conn.Read(buf)
+		if err != nil {
+			return -1, false, err
+		}
 		read := buf[0]
 		if read == 0xFE {
-			return 0, true
+			return 0, true, nil
 		}
 
 		val := int(read & 0b01111111)
@@ -100,27 +103,37 @@ func ReadPacketPrefix(conn net.Conn) (length int, isLegacy bool) {
 		}
 	}
 
-	return result, false
+	return result, false, nil
 }
 
-func (server *Server) handlePassthrough(conn net.Conn) {
+func (server *Server) handleProxy(conn net.Conn) {
 	serverConn, _ := net.Dial("tcp", "127.0.0.1:" + os.Getenv("INTERNAL_SERVER_PORT"))
+	log.Println("Handling proxy connection")
+
 	go func() {
 		_, _ = io.Copy(conn, serverConn)
+		_ = conn.Close()
+		_ = serverConn.Close()
 	}()
 
 	go func() {
 		_, _ = io.Copy(serverConn, conn)
+		_ = conn.Close()
+		_ = serverConn.Close()
 	}()
 }
 
 func (server *Server) handleClient(conn net.Conn) {
 	client := Client{conn, 0, 0}
+	log.Println("Handling connection")
 
-	log.Println("Handling a connection")
+	defer conn.Close()
 
 	for {
-		length, isLegacy := ReadPacketPrefix(conn)
+		length, isLegacy, err := readPacketHeader(conn)
+		if err != nil {
+			return
+		}
 
 		receiveBuf := make([]byte, length)
 		read, err := conn.Read(receiveBuf)

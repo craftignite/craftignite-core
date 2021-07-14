@@ -57,7 +57,7 @@ func (process *ServerProcess) Start() {
 
 	process.StartupCallback()
 
-	// STDIN Passthrough
+	// Stdin pass through
 	go func() {
 		_, err := io.Copy(process.stdin, os.Stdin)
 		if err != nil {
@@ -68,10 +68,11 @@ func (process *ServerProcess) Start() {
 	// Wait for server to shut down
 	err = cmd.Wait()
 	if err != nil {
-		log.Fatalln(err)
+		log.Println("Minecraft server did not shut down successfully")
+		log.Println(err)
 	}
 
-	log.Println("Minecraft server shut down")
+	log.Println("Minecraft server exited")
 	process.running = false
 	process.ShutdownCallback()
 }

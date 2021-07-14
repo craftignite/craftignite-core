@@ -46,10 +46,11 @@ func main() {
 		Command:   strings.Join(os.Args[1:], " "),
 		Directory: ".",
 		StartupCallback: func() {
-			server.Passthrough = true
+			server.ProxyMode = true
+			watchdog.Reset()
 		},
 		ShutdownCallback: func() {
-			server.Passthrough = false
+			server.ProxyMode = false
 			if !watchdog.HasShutdown {
 				log.Println("Server stopped without watchdog, interpreting as full stop")
 				os.Exit(0)
